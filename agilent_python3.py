@@ -44,6 +44,21 @@ class Agilent(object):
     ------------
     Agilent(dev = u'ASRL/dev/ttyUSB0::INSTR', br = 57600) : initialize and connect
 
+    upload_binary(arr) : use this to upload array in binary format (faster, better, N len)
+                         uploads the data to VOLATILE slot
+    save_volatile(arbname) : saves the contents of VOLATILE into arbname (with error check)
+    activate_arb(arbname) : activates user defined ARBibrary fun. to output (no error check)
+    catalog_contents()    : list the current contents of user arbitrary functions catalog
+    delete_arb(arbname)   : obvious, with error checking
+
+    burst(ncyc=1) : example of how to implement a simple burst output using commands
+
+    close() : close the connection
+    write(message)
+    read() : outputs returned text or times out
+    
+    
+    
 
     upload_array(arr): 64k only, slow version, do not use
     """
@@ -107,7 +122,7 @@ class Agilent(object):
         self.ag.write_raw(b'\n')
         
 
-    def save_volatile(self, arbname="MYARB"):
+    def save_volatile(self, arbname):
         """
         At the moment, saves to "MYARB" and selects it
         First looks if we have a free memory slot
@@ -227,21 +242,16 @@ if __name__ == "__main__":
 
 
     #upload the signal
-    wg.upload_binary(ct)
-    
-
-
-    wg.save_volatile('newtest') # save in arb memory and select
+    wg.upload_binary(ct) # upload to volatile
+    wg.save_volatile('newtest') # save volatile to memory 
+    wg.activate_arb('newtest')  # and select it
     #wg.burst()  # burst needs more work
 
-    
-
-    wg.write('DATA:COPY MYARB, VOLATILE')
-    wg.write('FUNC:USER MYARB')
     wg.write('FUNC USER')
     wg.write('OUTP ON')
+
+    
     wg.write('OUTP OFF')
     
     wg.close()
 
-    #wg.burst()
