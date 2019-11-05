@@ -3,12 +3,15 @@
 # Author: Martin Lints, martin.lints@ioc.ee
 # Year: 2019 (originally 2017 for python2)
 
+# Wrapper over pyvisa for remote control of Agilent 33250A
+# mainly for binary upload of data
+# commands constructed according to Agilent 33250A manual
+# see the manual for additional commands
+
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 3
 # of the License, or (at your option) any later version.
-
-# commands constructed according to Agilent 33250A manual
   
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,7 +24,6 @@
   
 #####################################################################
 
-
 import pyvisa as visa
 import time
 import struct
@@ -30,6 +32,8 @@ import struct
 class Agilent(object):
     """
     Class for communicating with Agilent Arbitrary Waveform Generator 33250A
+    
+    Setup the AWG I/O with: RS-232, 57.6K baud, parity None/8Bits, handshake DTR
 
     Initialize with
     Agilent(dev=u'ASRL/dev/ttyUSB0::INSTR', br=57600)
@@ -38,6 +42,7 @@ class Agilent(object):
 
     Methods
     ------------
+    Agilent(dev = u'ASRL/dev/ttyUSB0::INSTR', br = 57600) : initialize and connect
 
 
     upload_array(arr): 64k only, slow version, do not use
@@ -55,8 +60,6 @@ class Agilent(object):
         self.ag.baud_rate = br
         self.ag.set_visa_attribute(visa.constants.VI_ATTR_ASRL_FLOW_CNTRL,
                                    visa.constants.VI_ASRL_FLOW_DTR_DSR)
-        #visa.constants.VI_ASRL_FLOW_DTR_DSR)
-        #visa.constants.VI_ASRL_FLOW_RTS_CTS)
         self.ag.write('*IDN?')
         print(self.ag.read())
 
@@ -67,11 +70,13 @@ class Agilent(object):
 
         right now only accepts array of 64000 elements
         Slow version, do not use. Use upload_binary instead
+
+        not useless, useful as a (bad) example
         """
         self.ag.write_raw('DATA:DAC VOLATILE' )
         # pause for 1 ms like manual requires
         time.sleep(1e-2)
-        for i in xrange(1600):
+        for i in range(1600):
             print("doing {}th of 64000".format(i*40))
             ctstr1 = ', '.join(map(str, arr[i*40:(i+1)*40]/2))
             #self.ag.write_raw(u', {}'.format(ctstr1))
@@ -148,7 +153,7 @@ if __name__ == "__main__":
     ct = (2047*np.sin(phi)).astype(int)
 
 
-    #uplaod the signal
+    #upload the signal
     wg.upload_binary(ct)
     
 
