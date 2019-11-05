@@ -40,7 +40,7 @@ class Agilent(object):
     where dev is the device (here using Linux notation and ttyUSB0)
     br is baudrate
 
-    Methods
+    Methods (decimal integer values from -2047 to +2047)
     ------------
     Agilent(dev = u'ASRL/dev/ttyUSB0::INSTR', br = 57600) : initialize and connect
 
@@ -88,12 +88,20 @@ class Agilent(object):
 
 
     def upload_binary(self, arr):
-        """binary upload version:
+        """binary upload to VOLATILE:
          also only accepts array of 64000 elements
         """
+        # calculate the number of decimals for 2x datalen (2byte words)
+        Nbytes = len(arr)*2
+        # if arr.len is N, then in the data command "#X(2*N)"
+        # where X is number of decimals of (2*N)
+        X = int(floor(log10(Nbytes)))+1
+        cmdstr = "#"+str(X)+str(int(Nbytes))
+
+        # upload command
         self.ag.write("form:bord swap")
-        binarry = b"".join([struct.pack("<h", val) for val in arr])
-        self.ag.write_raw(b'data:dac volatile, #6128000') #6 cmd decimals,128k num
+        binarry = b"".join([struct.pack("<h", val) for val in arr]) # pack in 2byte words
+        self.ag.write_raw(b'data:dac volatile, ' + cmdstr.encode()) #6 cmd decimals,128k num
         time.sleep(0.5)
         self.ag.write_raw(binarry) # python3: already bytes
         self.ag.write_raw(b'\n')
@@ -101,8 +109,22 @@ class Agilent(object):
 
     def save_volatile(self, arbname="MYARB"):
         """
-        At the moment, saves to "MYARB" AND SELECTS IT
+        At the moment, saves to "MYARB" and selects it
+        First looks if we have a free memory slot
         """
+        # do we have a free memory slot?
+        self.ag.write('DATA:NVOLatile:FREE?')
+        rval = self.read() # returns '+0\n' in case of full
+        fullCond = True
+        if fullCond:
+            self.write('DATA:NVOLATILE:CATALOG?')
+            catalogContents = self.read()
+            print("User-defined function catalog full, please delete some")
+            print("Current functions:")
+            print(catalogContents)
+
+        
+        
         #  Copy the arbitrary waveform to non-volatile memory, using DATA:COPY
         self.ag.write('DATA:COPY {}, VOLATILE'.format(arbname))
         #  Select the arbitrary waveform to output FUNC:USER
@@ -110,6 +132,37 @@ class Agilent(object):
         self.ag.write('FUNC:USER {}'.format(arbname))
 
 
+    def delete_arb(self, arbname):
+        """
+        delete the saved arbitrary waveform of name "ARBNAME" from catalog
+        freeing up space
+        """
+        # check if we have it:
+        self.write('DATA:NVOLATILE:CATALOG?')
+        catalogContents = self.read()
+        if arbname.upper() not in catalogContents:
+            print("Catalog held: ")
+            print(catalogContents)
+            raise RuntimeError('Selected arbitrary name {} not in catalog:'.format(arbname))
+
+        # check if we are not currently outputting it
+        # 1) have we selected a user function?
+        self.write('FUNCTION?')
+        state = self.read()
+        if state=='USER\n':
+            # are we using the arbname function
+            self.write('FUNCTION:USER?')
+            funname = self.read()
+            if funname==arbname.upper()+'\n':
+                # we have selected the function that we are trying to delete
+                # NO-GO
+                raise RuntimeError("{} is currently selected, cannot delete".format(arbname))
+        
+        # OK, we can delete
+        self.write('DATA:DELETE {}'.format(arbname))
+
+        
+        
     def burst(self, ncyc=1):
         """
         Example of a method for running the code by burst:
@@ -158,7 +211,7 @@ if __name__ == "__main__":
     
 
 
-    wg.save_volatile('buu') # 
+    wg.save_volatile('newtest') # save in arb memory and select
     #wg.burst()  # burst needs more work
 
     
