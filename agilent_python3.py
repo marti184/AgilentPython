@@ -115,23 +115,42 @@ class Agilent(object):
         # do we have a free memory slot?
         self.ag.write('DATA:NVOLatile:FREE?')
         rval = self.read() # returns '+0\n' in case of full
-        fullCond = True
-        if fullCond:
+        if rval[1]=='0':
             self.write('DATA:NVOLATILE:CATALOG?')
             catalogContents = self.read()
+
+            # can still go if the arbname is in catalog
+            if arbname.upper() in catalogContents:
+                print('overwriting previous {}'.format(arbname))
+                self.ag.write('DATA:COPY {}, VOLATILE'.format(arbname))
+
+            # no go 
             print("User-defined function catalog full, please delete some")
             print("Current functions:")
             print(catalogContents)
+            return
+        else:
+            #  Copy the arbitrary waveform to non-volatile memory, using DATA:COPY
+            self.ag.write('DATA:COPY {}, VOLATILE'.format(arbname))
 
-        
-        
-        #  Copy the arbitrary waveform to non-volatile memory, using DATA:COPY
-        self.ag.write('DATA:COPY {}, VOLATILE'.format(arbname))
+
+            
+    def activate_arb(self, arbname):
         #  Select the arbitrary waveform to output FUNC:USER
         # (user-defined as opposed to internal functions)
         self.ag.write('FUNC:USER {}'.format(arbname))
 
 
+    def catalog_contents(self):
+        """
+        prints the catalog of user-defined functions
+        """
+        self.write('DATA:NVOLATILE:CATALOG?')
+        catalogContents = self.read()
+        print("User function catalog holds: ")
+        print(catalogContents)
+        
+        
     def delete_arb(self, arbname):
         """
         delete the saved arbitrary waveform of name "ARBNAME" from catalog
@@ -179,6 +198,7 @@ class Agilent(object):
         self.ag.write('*TRG')
 
     def close(self):
+        """ duh """
         self.ag.close()
 
     def write(self, txt):
