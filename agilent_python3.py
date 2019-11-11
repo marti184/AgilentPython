@@ -27,6 +27,7 @@
 import pyvisa as visa
 import time
 import struct
+from numpy import floor, log10
 
 
 class Agilent(object):
