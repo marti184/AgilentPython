@@ -121,6 +121,7 @@ class Agilent(object):
         time.sleep(0.5)
         self.ag.write_raw(binarry) # python3: already bytes
         self.ag.write_raw(b'\n')
+        time.sleep(2)
         
 
     def save_volatile(self, arbname):
