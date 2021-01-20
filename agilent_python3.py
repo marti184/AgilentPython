@@ -64,7 +64,7 @@ class Agilent(object):
     upload_array(arr): 64k only, slow version, do not use
     """
 
-    def __init__(self, dev = u'ASRL/dev/ttyUSB0::INSTR', br = 57600):
+    def __init__(self, dev = u'ASRL/dev/ttyUSB0::INSTR', br = 57600, t_o = 60):
         """
         start on dev/ttyUSB0 (modify code to change)
         br: baudrate (=57600)
@@ -76,6 +76,7 @@ class Agilent(object):
         self.ag.baud_rate = br
         self.ag.set_visa_attribute(visa.constants.VI_ATTR_ASRL_FLOW_CNTRL,
                                    visa.constants.VI_ASRL_FLOW_DTR_DSR)
+        self.ag.timeout = t_o*1000
         self.ag.write('*IDN?')
         print(self.ag.read())
 
